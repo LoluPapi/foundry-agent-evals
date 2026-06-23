@@ -1,0 +1,23 @@
+name: evals
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    env:
+      # mock mode keeps CI free and deterministic; no secrets required.
+      # To run against a real model, set AGENT_MODE + endpoint via repo secrets.
+      AGENT_MODE: mock
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Run eval gate
+        run: python run_evals.py
+      - name: Run eval gate as tests
+        run: pytest -q

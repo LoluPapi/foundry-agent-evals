@@ -50,16 +50,28 @@ def _complete(messages: list[dict], model: str, cfg: Config, temperature: float)
     return (resp.choices[0].message.content or "").strip()
 
 
+# Sentinel returned when the platform's content filter blocks a request. This
+# is a real, common outcome on Azure (e.g. a jailbreak attempt), and from the
+# agent's point of view it is a safe refusal, not a crash.
+CONTENT_FILTERED = "[blocked by content filter]"
+
+
 def run_agent(message: str, cfg: Config | None = None) -> str:
     """Run the agent under test against a single customer message."""
     cfg = cfg or load_config()
     if cfg.mode == "mock":
         return MOCK_REPLY
-    return _complete(
-        [{"role": "system", "content": SYSTEM_PROMPT},
-         {"role": "user", "content": message}],
-        model=cfg.model, cfg=cfg, temperature=0.2,
-    )
+    try:
+        return _complete(
+            [{"role": "system", "content": SYSTEM_PROMPT},
+             {"role": "user", "content": message}],
+            model=cfg.model, cfg=cfg, temperature=0.2,
+        )
+    except Exception as e:  # noqa: BLE001 - we only swallow content-filter blocks
+        msg = str(e).lower()
+        if "content_filter" in msg or "content management" in msg:
+            return CONTENT_FILTERED
+        raise
 
 
 def judge(prompt: str, cfg: Config | None = None) -> str:

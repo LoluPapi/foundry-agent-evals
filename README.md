@@ -77,6 +77,11 @@ AGENT_MODE=openai python run_evals.py
 - Prefer **serverless / pay-per-token** over provisioned capacity.
 - **Undeploy** endpoints when idle.
 
+Measured on `gpt-4.1-mini`: a full 6-case run is ~1,600 tokens over 7 model
+calls (the judge adds calls), about **$0.0009**, so roughly 1,000 runs per
+dollar. `run_evals.py` prints tokens and an estimated cost each run; tune the
+estimate with `PRICE_INPUT_PER_1M` / `PRICE_OUTPUT_PER_1M`.
+
 ## Plugging in the Azure AI Evaluation SDK
 
 `evals/graders.py` is intentionally simple so the mechanics are clear. To use

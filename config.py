@@ -28,6 +28,10 @@ class Config:
     azure_api_key: str | None
     azure_api_version: str
 
+    # rough cost estimate, USD per 1M tokens (defaults: gpt-4.1-mini list price)
+    price_in_per_1m: float
+    price_out_per_1m: float
+
 
 def load_config() -> Config:
     mode = os.getenv("AGENT_MODE", "mock").strip().lower()
@@ -42,4 +46,6 @@ def load_config() -> Config:
         azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
         azure_api_key=os.getenv("AZURE_OPENAI_API_KEY"),
         azure_api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2024-10-21"),
+        price_in_per_1m=float(os.getenv("PRICE_INPUT_PER_1M", "0.40")),
+        price_out_per_1m=float(os.getenv("PRICE_OUTPUT_PER_1M", "1.60")),
     )

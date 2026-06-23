@@ -14,6 +14,15 @@ from config import Config, load_config
 
 SYSTEM_PROMPT = (Path(__file__).parent / "system_prompt.md").read_text(encoding="utf-8")
 
+# Token accounting for the whole run (agent calls + judge calls), so the gate
+# can report real usage and a cost estimate.
+USAGE = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0, "calls": 0}
+
+
+def reset_usage() -> None:
+    for k in USAGE:
+        USAGE[k] = 0
+
 # A deliberately safe stand-in: it defers instead of inventing anything, so the
 # blocking cases pass without a model and the suite is green in CI for free.
 MOCK_REPLY = "Let me confirm that with the vendor and get right back to you so I give you the correct details."
@@ -47,6 +56,11 @@ def _complete(messages: list[dict], model: str, cfg: Config, temperature: float)
     resp = client.chat.completions.create(
         model=model, messages=messages, temperature=temperature,
     )
+    if resp.usage:
+        USAGE["prompt_tokens"] += resp.usage.prompt_tokens
+        USAGE["completion_tokens"] += resp.usage.completion_tokens
+        USAGE["total_tokens"] += resp.usage.total_tokens
+        USAGE["calls"] += 1
     return (resp.choices[0].message.content or "").strip()
 
 

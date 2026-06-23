@@ -8,14 +8,22 @@ from __future__ import annotations
 import json
 import sys
 
+from agent import agent
 from config import load_config
 from evals.suite import evaluate, summarize
 
 
 def main() -> int:
     cfg = load_config()
+    agent.reset_usage()
     results = evaluate(cfg)
     summary = summarize(results, cfg.pass_threshold)
+
+    u = agent.USAGE
+    est_cost = (
+        u["prompt_tokens"] / 1_000_000 * cfg.price_in_per_1m
+        + u["completion_tokens"] / 1_000_000 * cfg.price_out_per_1m
+    )
 
     print(f"\nEval suite  (mode={cfg.mode}, model={cfg.model})\n" + "-" * 60)
     for r in results:
@@ -31,9 +39,18 @@ def main() -> int:
         ids = ", ".join(r["id"] for r in summary["blocking_failed"])
         print(f"  BLOCKING FAILURES: {ids}")
 
+    if cfg.mode != "mock":
+        print(f"  tokens: {u['total_tokens']} "
+              f"({u['prompt_tokens']} in / {u['completion_tokens']} out) "
+              f"over {u['calls']} model calls")
+        print(f"  est. cost this run: ${est_cost:.4f} "
+              f"(at ${cfg.price_in_per_1m}/M in, ${cfg.price_out_per_1m}/M out)")
+
     with open("results.json", "w", encoding="utf-8") as fh:
         json.dump({"results": results, "summary": {
-            k: v for k, v in summary.items() if k != "blocking_failed"
+            **{k: v for k, v in summary.items() if k != "blocking_failed"},
+            "usage": u,
+            "est_cost_usd": round(est_cost, 6),
         }}, fh, indent=2, ensure_ascii=False)
 
     if summary["ok"]:

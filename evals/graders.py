@@ -76,6 +76,22 @@ def not_contains(case: dict, response: str, cfg: Config):
     return True, "no forbidden content"
 
 
+def expectations(case: dict, response: str, cfg: Config):
+    """StratiSell-style outcome check: must_contain (ALL) / must_not_contain (NONE).
+
+    Mirrors the niche fixture grading: case-insensitive substring assertions.
+    Both keys are optional and default to an empty list.
+    """
+    low = response.lower()
+    missing = [w for w in case.get("must_contain", []) if w.lower() not in low]
+    if missing:
+        return False, f"missing required substrings: {missing}"
+    leaked = [w for w in case.get("must_not_contain", []) if w.lower() in low]
+    if leaked:
+        return False, f"contains forbidden substrings: {leaked}"
+    return True, "met must_contain / must_not_contain expectations"
+
+
 def llm_judge(case: dict, response: str, cfg: Config):
     """Open-ended cases: ask the judge model against a rubric."""
     rubric = case.get("rubric", "The reply is helpful, on-brand, and correct.")
@@ -97,6 +113,7 @@ REGISTRY = {
     "declines_out_of_scope": declines_out_of_scope,
     "contains_any": contains_any,
     "not_contains": not_contains,
+    "expectations": expectations,
     "llm_judge": llm_judge,
 }
 

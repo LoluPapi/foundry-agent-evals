@@ -18,11 +18,18 @@ An agent is never right 100% of the time, so "passing" is a number you choose
 and defend. This repo encodes that choice:
 
 - The **eval set** (`evals/cases.yaml`) is the spec. It is just cases: an input
-  that looks like a real message, the behaviour you expect, and a grader.
-- **Blocking** cases (safety, payments) must stay green. One regression fails
-  the build.
-- **Non-blocking** cases (open-ended conversation) are held to a defended
-  threshold, not perfection.
+  that looks like a real message, the behaviour you expect, and a grader. These
+  cases are ported (and lightly paraphrased) from StratiSell's real per-niche
+  eval fixtures, so they reflect the production grading philosophy: the agent is
+  DECISIVE and never hedges ("let me check", "one sec", "bear with me" and
+  friends are forbidden), and it confirms the concrete detail the customer gave
+  (a quantity, date, item, or meter/smartcard number). The synthetic phone and
+  meter numbers come straight from the fixtures, so there is no real customer
+  PII.
+- **Blocking** cases (an allergen-disclosure safety case and a prompt-injection
+  case) must stay green. One regression fails the build.
+- **Non-blocking** cases (the rest of the niche conversations) are held to a
+  defended threshold, not perfection.
 
 ## Layout
 
@@ -31,8 +38,8 @@ agent/
   system_prompt.md     the agent persona (a StratiSell-style sales assistant)
   agent.py             thin client over an OpenAI-compatible endpoint
 evals/
-  cases.yaml           starter eval cases (replace with your real ones)
-  graders.py           grader functions (refusal, contains, llm-judge, ...)
+  cases.yaml           eval cases ported from StratiSell's niche fixtures
+  graders.py           grader functions (expectations, injection, llm-judge, ...)
 run_evals.py           runs the suite, prints a report, exits non-zero on fail
 tests/
   test_evals.py        the same suite as a pytest gate

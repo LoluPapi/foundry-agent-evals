@@ -1,4 +1,4 @@
-"""Smoke tests for labs running under AGENT_MODE=mock."""
+"""Smoke tests for the mock-mode lab scripts under labs/."""
 from __future__ import annotations
 
 import os
@@ -9,31 +9,45 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
-def _run_script(script_rel_path: str):
-    env = dict(os.environ)
-    env["AGENT_MODE"] = "mock"
-    script = REPO_ROOT / script_rel_path
-    assert script.exists(), f"Script {script} does not exist"
-    res = subprocess.run(
-        [sys.executable, str(script)],
+def _run_lab(rel_path: str) -> subprocess.CompletedProcess[str]:
+    env = {**os.environ, "AGENT_MODE": "mock", "PASS_THRESHOLD": "0.80"}
+    env.pop("RENDER_PNG", None)
+    return subprocess.run(
+        [sys.executable, rel_path],
+        cwd=REPO_ROOT,
         env=env,
         capture_output=True,
         text=True,
+        check=False,
     )
-    assert res.returncode == 0, f"Script {script} failed:\nSTDOUT:\n{res.stdout}\nSTDERR:\n{res.stderr}"
 
 
-def test_haggling_mock():
-    _run_script("labs/haggling/haggling.py")
+def test_prompt_shields_mock():
+    res = _run_lab("labs/prompt-shields/prompt_shields.py")
+    assert res.returncode == 0, res.stderr
+    assert "6/6 inputs handled safely" in res.stdout
 
 
-def test_caching_mock():
-    _run_script("labs/caching/caching.py")
+def test_rbac_principal_mock():
+    res = _run_lab("labs/rbac-principal/rbac_check.py")
+    assert res.returncode == 0, res.stderr
+    assert "403 AuthorizationFailed" in res.stdout
 
 
-def test_turn_trace_mock():
-    _run_script("labs/turn-trace/turn_trace.py")
+def test_release_gate_mock():
+    res = _run_lab("labs/release-gate/release_gate.py")
+    assert res.returncode == 0, res.stderr
+    assert "RELEASE: PROMOTE" in res.stdout
 
 
-def test_model_bench_mock():
-    _run_script("labs/model-bench/model_bench.py")
+def test_regression_diff_mock_blocks_pidgin_drop():
+    res = _run_lab("labs/regression-diff/regression_diff.py")
+    assert res.returncode == 1, res.stdout
+    assert "BLOCK upgrade" in res.stdout
+
+
+def test_ops_triage_mock():
+    res = _run_lab("labs/ops-triage/ops_triage.py")
+    assert res.returncode == 0, res.stderr
+    assert "HUMAN_GATE" in res.stdout
+    assert "0 irreversible auto-runs" in res.stdout

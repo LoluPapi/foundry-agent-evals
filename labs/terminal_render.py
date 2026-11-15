@@ -5,7 +5,7 @@ Used by lab scripts to produce publication-ready proof artifacts.
 from __future__ import annotations
 
 from pathlib import Path
-from PIL import Image, ImageDraw, ImageFont
+import os
 
 BG_COLOR = (15, 21, 26)
 BORDER_COLOR = (35, 45, 55)
@@ -23,7 +23,9 @@ COLOR_YELLOW = (235, 178, 60)
 COLOR_WHITE = (245, 248, 250)
 
 
-def _get_font(size: int = 14) -> ImageFont.FreeTypeFont:
+def _get_font(size: int = 14):
+    from PIL import ImageFont
+
     candidate_fonts = [
         "/System/Library/Fonts/Menlo.ttc",
         "/System/Library/Fonts/SFMono-Regular.otf",
@@ -41,11 +43,15 @@ def _get_font(size: int = 14) -> ImageFont.FreeTypeFont:
 
 def render_terminal(
     title: str,
-    lines: list[tuple[str, str]],  # (text, color_key)
+    lines: list[tuple[str, str]],
     out_path: str | Path,
     width: int = 1100,
-    height: int = 416,
+    height: int | None = None,
 ) -> Path:
+    from PIL import Image, ImageDraw
+
+    if height is None:
+        height = 36 + 20 + len(lines) * 22 + 24
     out_path = Path(out_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -98,3 +104,12 @@ def render_terminal(
 
     img.save(out_path, "PNG")
     return out_path
+
+
+def maybe_render_terminal(title: str, lines: list[tuple[str, str]], width: int = 1100) -> Path | None:
+    out_png = os.getenv("RENDER_PNG")
+    if not out_png:
+        return None
+    path = render_terminal(title, lines, out_png, width=width)
+    print(f"Rendered screenshot -> {path}")
+    return path

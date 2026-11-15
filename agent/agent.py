@@ -57,11 +57,19 @@ def _client(mode: str, azure_endpoint: str | None, azure_api_version: str,
     if mode == "azure":
         from openai import AzureOpenAI
 
-        return AzureOpenAI(
-            azure_endpoint=azure_endpoint or "",
-            api_key=azure_api_key or "",
-            api_version=azure_api_version,
-        )
+        kwargs = {
+            "azure_endpoint": azure_endpoint or "",
+            "api_version": azure_api_version,
+        }
+        if azure_api_key:
+            kwargs["api_key"] = azure_api_key
+        else:
+            from azure.identity import DefaultAzureCredential, get_bearer_token_provider
+            kwargs["azure_ad_token_provider"] = get_bearer_token_provider(
+                DefaultAzureCredential(),
+                "https://cognitiveservices.azure.com/.default",
+            )
+        return AzureOpenAI(**kwargs)
     from openai import OpenAI
 
     return OpenAI(base_url=base_url, api_key=api_key or "not-needed")

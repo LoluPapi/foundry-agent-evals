@@ -1,0 +1,50 @@
+name: Agent Release Gate (Foundry OIDC)
+
+on:
+  pull_request:
+    paths:
+      - 'agent/**'
+      - 'evals/**'
+      - 'labs/release-gate/**'
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  validate-and-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Stage 1 & 2 - Bundle check and zero-cost mock gate
+        env:
+          AGENT_MODE: mock
+          MODEL: gpt-4.1-mini
+          PASS_THRESHOLD: '0.80'
+        run: python labs/release-gate/release_gate.py
+
+      - name: Azure login via OIDC (no static keys)
+        if: ${{ vars.AZURE_CLIENT_ID != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Stage 3 & 4 - Live Foundry smoke & eval gate
+        if: ${{ vars.AZURE_CLIENT_ID != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
+        env:
+          AGENT_MODE: azure
+          AZURE_OPENAI_ENDPOINT: ${{ vars.AZURE_OPENAI_ENDPOINT }}
+          MODEL: ${{ vars.AZURE_DEPLOYMENT_NAME || 'gpt-4.1-mini' }}
+          PASS_THRESHOLD: '0.80'
+        run: python labs/release-gate/release_gate.py
